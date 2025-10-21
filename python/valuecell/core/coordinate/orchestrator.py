@@ -809,8 +809,8 @@ class AgentOrchestrator:
 
             # Configure A2A metadata
             metadata = metadata or {}
-            if task.pattern != TaskPattern.ONCE:
-                metadata["notify"] = True
+            # if task.pattern != TaskPattern.ONCE:
+            #     metadata["notify"] = True
 
             # Configure Agno metadata
             # reference: https://docs.agno.com/examples/concepts/agent/other/agent_run_metadata#agent-run-metadata
