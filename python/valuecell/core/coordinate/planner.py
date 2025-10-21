@@ -25,6 +25,7 @@ from valuecell.core.coordinate.planner_prompts import (
     PLANNER_INSTRUCTION,
 )
 from valuecell.core.task import Task, TaskPattern, TaskStatus
+from valuecell.core.task.models import ScheduleConfig
 from valuecell.core.types import UserInput
 from valuecell.utils import generate_uuid
 from valuecell.utils.env import agent_debug_mode_enabled
@@ -228,6 +229,7 @@ class ExecutionPlanner:
                 conversation_id=user_input.meta.conversation_id,
                 thread_id=thread_id,
                 pattern=task.pattern,
+                schedule_config=task.schedule_config,
                 handoff_from_super_agent=(not user_input.target_agent_name),
             )
             for task in plan_raw.tasks
@@ -241,6 +243,7 @@ class ExecutionPlanner:
         conversation_id: str | None = None,
         thread_id: str | None = None,
         pattern: TaskPattern = TaskPattern.ONCE,
+        schedule_config: Optional[ScheduleConfig] = None,
         handoff_from_super_agent: bool = False,
     ) -> Task:
         """
@@ -252,6 +255,7 @@ class ExecutionPlanner:
             agent_name: Name of the agent to execute the task
             query: Query/prompt for the agent
             pattern: Execution pattern (once or recurring)
+            schedule_config: Schedule configuration for recurring tasks
 
         Returns:
             Task: Configured task ready for execution.
@@ -268,6 +272,7 @@ class ExecutionPlanner:
             status=TaskStatus.PENDING,
             query=query,
             pattern=pattern,
+            schedule_config=schedule_config,
             handoff_from_super_agent=handoff_from_super_agent,
         )
 

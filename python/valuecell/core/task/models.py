@@ -25,6 +25,17 @@ class TaskPattern(str, Enum):
     RECURRING = "recurring"  # Recurring task
 
 
+class ScheduleConfig(BaseModel):
+    """Schedule configuration for recurring tasks"""
+
+    interval_minutes: Optional[int] = Field(
+        None, description="Interval in minutes for recurring execution (e.g., 60 for every hour)"
+    )
+    daily_time: Optional[str] = Field(
+        None, description="Daily execution time in HH:MM format (e.g., '09:00' for 9 AM)"
+    )
+
+
 class Task(BaseModel):
     """Task data model"""
 
@@ -49,6 +60,9 @@ class Task(BaseModel):
     )
     pattern: TaskPattern = Field(
         default=TaskPattern.ONCE, description="Task execution pattern"
+    )
+    schedule_config: Optional[ScheduleConfig] = Field(
+        None, description="Schedule configuration for recurring tasks"
     )
     handoff_from_super_agent: bool = Field(
         False,

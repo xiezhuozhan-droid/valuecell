@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from valuecell.core.task import Task
-from valuecell.core.task.models import TaskPattern
+from valuecell.core.task.models import ScheduleConfig, TaskPattern
 
 
 class ExecutionPlan(BaseModel):
@@ -38,6 +38,9 @@ class _TaskBrief(BaseModel):
     agent_name: str = Field(..., description="Name of the agent executing this task")
     pattern: TaskPattern = Field(
         default=TaskPattern.ONCE, description="Task execution pattern"
+    )
+    schedule_config: Optional[ScheduleConfig] = Field(
+        None, description="Schedule configuration for recurring tasks"
     )
 
 
