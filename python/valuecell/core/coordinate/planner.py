@@ -89,6 +89,28 @@ class ExecutionPlanner:
         agent_connections: RemoteConnections,
     ):
         self.agent_connections = agent_connections
+        self.planner_agent = Agent(
+            model=get_model("PLANNER_MODEL_ID"),
+            tools=[
+                # TODO: enable UserControlFlowTools when stable
+                # UserControlFlowTools(),
+                self.tool_get_enabled_agents,
+            ],
+            debug_mode=agent_debug_mode_enabled(),
+            instructions=[PLANNER_INSTRUCTION],
+            # output format
+            markdown=False,
+            use_json_mode=True,
+            output_schema=PlannerResponse,
+            expected_output=PLANNER_EXPECTED_OUTPUT,
+            # context
+            db=InMemoryDb(),
+            add_datetime_to_context=True,
+            add_history_to_context=True,
+            num_history_runs=5,
+            read_chat_history=True,
+            enable_session_summaries=True,
+        )
 
     async def create_plan(
         self,
@@ -158,38 +180,14 @@ class ExecutionPlanner:
             A tuple of (list of Task objects, optional guidance message).
             If plan is inadequate, returns empty list with guidance message.
         """
-        # Create planning agent with appropriate tools and instructions
-        agent = Agent(
-            model=get_model("PLANNER_MODEL_ID"),
-            tools=[
-                # TODO: enable UserControlFlowTools when stable
-                # UserControlFlowTools(),
-                self.tool_get_enabled_agents,
-            ],
-            debug_mode=agent_debug_mode_enabled(),
-            instructions=[PLANNER_INSTRUCTION],
-            # output format
-            markdown=False,
-            use_json_mode=True,
-            output_schema=PlannerResponse,
-            expected_output=PLANNER_EXPECTED_OUTPUT,
-            # context
-            db=InMemoryDb(),
-            add_datetime_to_context=True,
-            add_history_to_context=True,
-            num_history_runs=3,
-            read_chat_history=True,
-            session_id=conversation_id,
-            enable_session_summaries=True,
-        )
-
         # Execute planning with the agent
-        run_response = agent.run(
+        run_response = self.planner_agent.run(
             PlannerInput(
                 target_agent_name=user_input.target_agent_name,
                 query=user_input.query,
             ),
             session_id=conversation_id,
+            user_id=user_input.meta.user_id,
         )
 
         # Handle user input requests through Human-in-the-Loop workflow
@@ -206,7 +204,7 @@ class ExecutionPlanner:
                     field.value = user_value
 
             # Continue agent execution with updated inputs
-            run_response = agent.continue_run(
+            run_response = self.planner_agent.continue_run(
                 # TODO: rollback to `run_id=run_response.run_id` when bug fixed by Agno
                 run_response=run_response,
                 updated_tools=run_response.tools,
@@ -218,14 +216,14 @@ class ExecutionPlanner:
         # Parse planning result and create tasks
         plan_raw = run_response.content
         logger.info(f"Planner produced plan: {plan_raw}")
-        
+
         # Check if plan is inadequate or has no tasks
         if not plan_raw.adequate or not plan_raw.tasks:
             # Use guidance_message from planner, or fall back to reason
             guidance_message = plan_raw.guidance_message or plan_raw.reason
             logger.info(f"Planner needs user guidance: {guidance_message}")
             return [], guidance_message  # Return empty task list with guidance
-        
+
         # Create tasks from planner response
         tasks = [
             self._create_task(
@@ -240,7 +238,7 @@ class ExecutionPlanner:
             )
             for task in plan_raw.tasks
         ]
-        
+
         return tasks, None  # Return tasks with no guidance message
 
     def _create_task(
