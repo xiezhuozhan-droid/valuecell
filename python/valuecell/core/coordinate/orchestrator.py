@@ -35,6 +35,7 @@ from valuecell.core.coordinate.super_agent import (
     SuperAgentDecision,
     SuperAgentOutcome,
 )
+from valuecell.core.coordinate.temporal import calculate_next_execution_delay
 from valuecell.core.task import Task, TaskManager
 from valuecell.core.task.models import TaskPattern
 from valuecell.core.types import (
@@ -625,6 +626,72 @@ class AgentOrchestrator:
 
     # ==================== Plan and Task Execution Methods ====================
 
+    async def _execute_single_task_run(
+        self, task: Task, metadata: dict
+    ) -> AsyncGenerator[BaseResponse, None]:
+        """Execute a single run of a task (may be called multiple times for scheduled tasks).
+
+        Args:
+            task: The task to execute
+            metadata: Execution metadata
+
+        Yields:
+            BaseResponse objects from task execution
+        """
+        conversation_id = task.conversation_id
+        thread_id = task.thread_id
+        task_id = task.task_id
+
+        # Get agent connection
+        agent_name = task.agent_name
+        client = await self.agent_connections.get_client(agent_name)
+        if not client:
+            raise RuntimeError(f"Could not connect to agent {agent_name}")
+        # agent_card = await self.agent_connections.start_agent(
+        #     agent_name,
+        #     with_listener=False,
+        # )
+        # streaming = agent_card.supports_streaming
+
+        # Send message to agent
+        remote_response = await client.send_message(
+            task.query,
+            conversation_id=conversation_id,
+            metadata=metadata,
+        )
+
+        # Process streaming responses
+        async for remote_task, event in remote_response:
+            if event is None and remote_task.status.state == TaskState.submitted:
+                task.remote_task_ids.append(remote_task.id)
+                yield self._response_factory.task_started(
+                    conversation_id=conversation_id,
+                    thread_id=thread_id,
+                    task_id=task_id,
+                )
+                continue
+
+            if isinstance(event, TaskStatusUpdateEvent):
+                result: RouteResult = await handle_status_update(
+                    self._response_factory, task, thread_id, event
+                )
+                for r in result.responses:
+                    r = self._response_buffer.annotate(r)
+                    yield r
+                # Apply side effects
+                for eff in result.side_effects:
+                    if eff.kind == SideEffectKind.FAIL_TASK:
+                        await self.task_manager.fail_task(task_id, eff.reason or "")
+                if result.done:
+                    return
+                continue
+
+            if isinstance(event, TaskArtifactUpdateEvent):
+                logger.info(
+                    f"Received unexpected artifact update for task {task_id}: {event}"
+                )
+                continue
+
     async def _execute_plan_with_input_support(
         self,
         plan: ExecutionPlan,
@@ -709,11 +776,14 @@ class AgentOrchestrator:
         self, task: Task, thread_id: str, metadata: Optional[dict] = None
     ) -> AsyncGenerator[BaseResponse, None]:
         """
-        Execute a single task with user input interruption support.
+        Execute a single task with user input interruption support and optional scheduling.
+
+        For tasks with schedule_config, this method will repeatedly execute the task
+        according to the configured interval or daily time.
 
         Args:
-            task: The task to execute
-            query: The query/prompt for the task
+            task: The task to execute (may include schedule_config for recurring execution)
+            thread_id: Thread ID for conversation tracking
             metadata: Execution metadata
         """
         try:
@@ -722,25 +792,18 @@ class AgentOrchestrator:
             conversation_id = task.conversation_id
 
             await self.task_manager.start_task(task_id)
-            # Get agent connection
-            agent_name = task.agent_name
-            agent_card = await self.agent_connections.start_agent(
-                agent_name,
-                with_listener=False,
-            )
-            client = await self.agent_connections.get_client(agent_name)
-            if not client:
-                raise RuntimeError(f"Could not connect to agent {agent_name}")
 
             # Configure A2A metadata
             metadata = metadata or {}
             if task.pattern != TaskPattern.ONCE:
                 metadata["notify"] = True
 
-            # Configure Agno metadata, reference: https://docs.agno.com/examples/concepts/agent/other/agent_run_metadata#agent-run-metadata
+            # Configure Agno metadata
+            # reference: https://docs.agno.com/examples/concepts/agent/other/agent_run_metadata#agent-run-metadata
             metadata[METADATA] = {}
 
-            # Configure Agno dependencies, reference: https://docs.agno.com/concepts/teams/dependencies#dependencies
+            # Configure Agno dependencies
+            # reference: https://docs.agno.com/concepts/teams/dependencies#dependencies
             metadata[DEPENDENCIES] = {
                 USER_PROFILE: {},
                 CURRENT_CONTEXT: {},
@@ -748,45 +811,33 @@ class AgentOrchestrator:
                 TIMEZONE: get_current_timezone(),
             }
 
-            # Send message to agent
-            remote_response = await client.send_message(
-                task.query,
-                conversation_id=conversation_id,
-                metadata=metadata,
-                streaming=agent_card.capabilities.streaming,
-            )
+            # Execute task with optional scheduling loop
+            while True:
+                # Execute a single run of the task
+                async for response in self._execute_single_task_run(task, metadata):
+                    yield response
 
-            # Process streaming responses
-            async for remote_task, event in remote_response:
-                if event is None and remote_task.status.state == TaskState.submitted:
-                    task.remote_task_ids.append(remote_task.id)
-                    yield self._response_factory.task_started(
-                        conversation_id=conversation_id,
-                        thread_id=thread_id,
-                        task_id=task_id,
-                    )
-                    continue
+                # Check if this is a scheduled recurring task
+                if not task.schedule_config:
+                    break  # One-time task, exit loop
 
-                if isinstance(event, TaskStatusUpdateEvent):
-                    result: RouteResult = await handle_status_update(
-                        self._response_factory, task, thread_id, event
-                    )
-                    for r in result.responses:
-                        r = self._response_buffer.annotate(r)
-                        yield r
-                    # Apply side effects
-                    for eff in result.side_effects:
-                        if eff.kind == SideEffectKind.FAIL_TASK:
-                            await self.task_manager.fail_task(task_id, eff.reason or "")
-                    if result.done:
-                        return
-                    continue
+                delay = calculate_next_execution_delay(task.schedule_config)
+                if not delay:
+                    break  # No valid schedule, exit loop
 
-                if isinstance(event, TaskArtifactUpdateEvent):
-                    logger.info(
-                        f"Received unexpected artifact update for task {task_id}: {event}"
-                    )
-                    continue
+                # Schedule next execution
+                logger.info(f"Task {task_id} scheduled to run again in {delay} seconds")
+                # TODO: yield scheduled task waiting message
+                # next_run_time = datetime.now() + timedelta(seconds=delay)
+                # yield self._response_factory.message_response_general(
+                #     event="scheduled_task_waiting",
+                #     conversation_id=conversation_id,
+                #     thread_id=thread_id,
+                #     task_id=task_id,
+                #     content=f"Next execution scheduled at {next_run_time.strftime('%Y-%m-%d %H:%M:%S')}",
+                # )
+                # Wait for the next scheduled execution
+                await asyncio.sleep(delay)
 
             # Complete task successfully
             await self.task_manager.complete_task(task_id)
