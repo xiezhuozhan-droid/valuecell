@@ -123,13 +123,14 @@ class ExecutionPlanner:
         )
 
         # Analyze input and create appropriate tasks
-        tasks = await self._analyze_input_and_create_tasks(
+        tasks, guidance_message = await self._analyze_input_and_create_tasks(
             user_input,
             conversation_id,
             user_input_callback,
             thread_id,
         )
         plan.tasks = tasks
+        plan.guidance_message = guidance_message
 
         return plan
 
@@ -139,7 +140,7 @@ class ExecutionPlanner:
         conversation_id: str,
         user_input_callback: Callable,
         thread_id: str,
-    ) -> List[Task]:
+    ) -> tuple[List[Task], Optional[str]]:
         """
         Analyze user input and produce a list of `Task` objects.
 
@@ -154,7 +155,8 @@ class ExecutionPlanner:
             user_input_callback: Async callback used for Human-in-the-Loop.
 
         Returns:
-            A list of `Task` objects derived from the planner response.
+            A tuple of (list of Task objects, optional guidance message).
+            If plan is inadequate, returns empty list with guidance message.
         """
         # Create planning agent with appropriate tools and instructions
         agent = Agent(
@@ -177,6 +179,7 @@ class ExecutionPlanner:
             add_history_to_context=True,
             num_history_runs=3,
             read_chat_history=True,
+            session_id=conversation_id,
             enable_session_summaries=True,
         )
 
@@ -215,13 +218,16 @@ class ExecutionPlanner:
         # Parse planning result and create tasks
         plan_raw = run_response.content
         logger.info(f"Planner produced plan: {plan_raw}")
+        
+        # Check if plan is inadequate or has no tasks
         if not plan_raw.adequate or not plan_raw.tasks:
-            # If information is still inadequate, return empty task list
-            raise ValueError(
-                "Planner indicated information is inadequate or produced no tasks."
-                f" Reason: {plan_raw.reason}"
-            )
-        return [
+            # Use guidance_message from planner, or fall back to reason
+            guidance_message = plan_raw.guidance_message or plan_raw.reason
+            logger.info(f"Planner needs user guidance: {guidance_message}")
+            return [], guidance_message  # Return empty task list with guidance
+        
+        # Create tasks from planner response
+        tasks = [
             self._create_task(
                 user_input.meta.user_id,
                 task.agent_name,
@@ -234,6 +240,8 @@ class ExecutionPlanner:
             )
             for task in plan_raw.tasks
         ]
+        
+        return tasks, None  # Return tasks with no guidance message
 
     def _create_task(
         self,

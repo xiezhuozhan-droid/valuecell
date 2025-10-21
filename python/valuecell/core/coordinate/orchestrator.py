@@ -713,6 +713,20 @@ class AgentOrchestrator:
             Streaming `BaseResponse` objects produced by each task execution.
         """
 
+        # Check if plan has guidance message (inadequate plan)
+        if plan.guidance_message:
+            # Send guidance message to user and return
+            response = self._response_factory.message_response_general(
+                event=StreamResponseEvent.MESSAGE_CHUNK,
+                conversation_id=conversation_id,
+                thread_id=thread_id,
+                task_id=generate_task_id(),
+                content=plan.guidance_message,
+            )
+            await self._persist_from_buffer(response)
+            yield response
+            return
+
         for task in plan.tasks:
             subagent_conversation_item_id = generate_item_id()
             if task.handoff_from_super_agent:

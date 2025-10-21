@@ -24,6 +24,9 @@ class ExecutionPlan(BaseModel):
     )
     tasks: List[Task] = Field(default_factory=list, description="Tasks to execute")
     created_at: str = Field(..., description="Plan creation timestamp")
+    guidance_message: Optional[str] = Field(
+        None, description="Guidance message to user when plan is inadequate or requires clarification"
+    )
 
 
 class _TaskBrief(BaseModel):
@@ -74,3 +77,7 @@ class PlannerResponse(BaseModel):
         description="true if information is adequate for task execution, false if more input is needed",
     )
     reason: str = Field(..., description="Reason for the planning decision")
+    guidance_message: Optional[str] = Field(
+        None, 
+        description="User-friendly guidance message when adequate is false or tasks is empty. Should provide clear direction on what is needed."
+    )

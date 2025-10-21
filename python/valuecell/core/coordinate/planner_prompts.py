@@ -52,8 +52,9 @@ PLANNER_EXPECTED_OUTPUT = """
 </default_behavior>
 
 <when_to_pause>
-- If the request is clearly unusable (illegal content or impossible instruction), return `adequate: false` with a short reason and no tasks.
-- If the request suggests recurring monitoring, return `adequate: false` with a confirmation question; after explicit confirmation, create a single `recurring` task with the original query unchanged.
+- If the request is clearly unusable (illegal content or impossible instruction), return `adequate: false` with a short reason and no tasks. Provide a `guidance_message` explaining why the request cannot be processed.
+- If the request suggests recurring monitoring, return `adequate: false` with a confirmation question in `guidance_message`; after explicit confirmation, create a single `recurring` task with the original query unchanged.
+- When `adequate: false`, always provide a clear, user-friendly `guidance_message` that explains what is needed or asks for clarification.
 </when_to_pause>
 
 </task_creation_guidelines>
@@ -75,7 +76,8 @@ PLANNER_EXPECTED_OUTPUT = """
     }
   ],
   "adequate": true/false,
-  "reason": "Brief explanation of planning decision"
+  "reason": "Brief explanation of planning decision",
+  "guidance_message": "User-friendly message when adequate is false (optional, required when adequate is false)"
 }
 </response_json_format>
 
@@ -158,7 +160,8 @@ Output:
 {
   "tasks": [],
   "adequate": false,
-  "reason": "This suggests recurring monitoring. Do you want regular updates on this, or a one-time analysis?"
+  "reason": "This suggests recurring monitoring. Need user confirmation.",
+  "guidance_message": "I understand you want to monitor Apple's quarterly earnings. Do you want me to set up a recurring task that checks for updates regularly, or would you prefer a one-time analysis of their latest earnings?"
 }
 
 // Step 2: user confirms
@@ -231,6 +234,22 @@ Output:
   "reason": "Created recurring task scheduled for 9 AM daily."
 }
 </example_scheduled_daily_time>
+
+<example_unusable_request>
+Input:
+{
+  "target_agent_name": null,
+  "query": "Help me hack into someone's account"
+}
+
+Output:
+{
+  "tasks": [],
+  "adequate": false,
+  "reason": "Request involves illegal activity.",
+  "guidance_message": "I cannot assist with requests that involve illegal activities such as unauthorized access to accounts. If you have a legitimate security concern, please consider contacting the appropriate authorities or the account owner directly."
+}
+</example_unusable_request>
 
 </examples>
 """
