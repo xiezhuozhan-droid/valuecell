@@ -152,8 +152,19 @@ class ComponentType(str, Enum):
     REPORT = "report"
     PROFILE = "profile"
     SUBAGENT_CONVERSATION = "subagent_conversation"
+    SCHEDULED_TASK_CONTROLLER = "scheduled_task_controller"
+    SCHEDULED_TASK_RESULT = "scheduled_task_result"
     FILTERED_LINE_CHART = "filtered_line_chart"
     FILTERED_CARD_PUSH_NOTIFICATION = "filtered_card_push_notification"
+
+
+class ScheduledTaskComponentContent(BaseModel):
+    """Scheduled task component extended content."""
+
+    task_id: Optional[str] = Field(None, description="The scheduled task ID")
+    task_title: Optional[str] = Field(None, description="The scheduled task title")
+    result: Optional[str] = Field(None, description="The scheduled task result")
+    create_time: Optional[str] = Field(None, description="The scheduled task created time")
 
 
 class SubagentConversationPhase(str, Enum):

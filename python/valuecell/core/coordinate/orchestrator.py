@@ -41,6 +41,7 @@ from valuecell.core.types import (
     BaseResponse,
     ComponentType,
     ConversationItemEvent,
+    ScheduledTaskComponentContent,
     StreamResponseEvent,
     SubagentConversationPhase,
     UserInput,
@@ -670,7 +671,7 @@ class AgentOrchestrator:
                     conversation_id=conversation_id,
                     thread_id=thread_id,
                     task_id=task_id,
-                    agent_name=agent_name
+                    agent_name=agent_name,
                 )
                 continue
 
@@ -834,6 +835,22 @@ class AgentOrchestrator:
                 LANGUAGE: get_current_language(),
                 TIMEZONE: get_current_timezone(),
             }
+
+            if task.schedule_config:
+                yield self._response_factory.component_generator(
+                    conversation_id=conversation_id,
+                    thread_id=thread_id,
+                    task_id=task_id,
+                    content=ScheduledTaskComponentContent(
+                        task_id=task_id,
+                        task_title=task.title,
+                    ).model_dump_json(exclude_none=True),
+                    component_type=ComponentType.SCHEDULED_TASK_CONTROLLER.value,
+                    agent_name=task.agent_name,
+                )
+                yield self._response_factory.done(
+                    conversation_id=conversation_id, thread_id=thread_id
+                )
 
             # Execute task with optional scheduling loop
             while True:

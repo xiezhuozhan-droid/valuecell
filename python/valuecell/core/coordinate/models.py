@@ -37,6 +37,9 @@ class _TaskBrief(BaseModel):
     before being converted to a full Task object.
     """
 
+    title: str = Field(
+        ..., description="A concise task title or summary (<=10 words or characters)"
+    )
     query: str = Field(..., description="The task to be performed")
     agent_name: str = Field(..., description="Name of the agent executing this task")
     pattern: TaskPattern = Field(

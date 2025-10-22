@@ -24,8 +24,7 @@ from valuecell.core.coordinate.planner_prompts import (
     PLANNER_EXPECTED_OUTPUT,
     PLANNER_INSTRUCTION,
 )
-from valuecell.core.task import Task, TaskPattern, TaskStatus
-from valuecell.core.task.models import ScheduleConfig
+from valuecell.core.task import Task, TaskStatus
 from valuecell.core.types import UserInput
 from valuecell.utils import generate_uuid
 from valuecell.utils.env import agent_debug_mode_enabled
@@ -225,31 +224,26 @@ class ExecutionPlanner:
             return [], guidance_message  # Return empty task list with guidance
 
         # Create tasks from planner response
-        tasks = [
-            self._create_task(
-                user_input.meta.user_id,
-                task.agent_name,
-                task.query,
-                conversation_id=user_input.meta.conversation_id,
-                thread_id=thread_id,
-                pattern=task.pattern,
-                schedule_config=task.schedule_config,
-                handoff_from_super_agent=(not user_input.target_agent_name),
+        tasks = []
+        for t in plan_raw.tasks:
+            tasks.append(
+                self._create_task(
+                    t,
+                    user_input.meta.user_id,
+                    conversation_id=user_input.meta.conversation_id,
+                    thread_id=thread_id,
+                    handoff_from_super_agent=(not user_input.target_agent_name),
+                )
             )
-            for task in plan_raw.tasks
-        ]
 
         return tasks, None  # Return tasks with no guidance message
 
     def _create_task(
         self,
+        task_brief,
         user_id: str,
-        agent_name: str,
-        query: str,
         conversation_id: str | None = None,
         thread_id: str | None = None,
-        pattern: TaskPattern = TaskPattern.ONCE,
-        schedule_config: Optional[ScheduleConfig] = None,
         handoff_from_super_agent: bool = False,
     ) -> Task:
         """
@@ -266,6 +260,8 @@ class ExecutionPlanner:
         Returns:
             Task: Configured task ready for execution.
         """
+        # task_brief is a _TaskBrief model instance
+
         if handoff_from_super_agent:
             conversation_id = generate_conversation_id()
             thread_id = generate_thread_id()
@@ -274,11 +270,12 @@ class ExecutionPlanner:
             conversation_id=conversation_id,
             thread_id=thread_id,
             user_id=user_id,
-            agent_name=agent_name,
+            agent_name=task_brief.agent_name,
             status=TaskStatus.PENDING,
-            query=query,
-            pattern=pattern,
-            schedule_config=schedule_config,
+            title=task_brief.title,
+            query=task_brief.query,
+            pattern=task_brief.pattern,
+            schedule_config=task_brief.schedule_config,
             handoff_from_super_agent=handoff_from_super_agent,
         )
 

@@ -60,6 +60,7 @@ PLANNER_EXPECTED_OUTPUT = """
 <default_behavior>
 - Default to pass-through: create a single task addressed to the provided `target_agent_name`, or to the best-fit agent identified via `tool_get_enabled_agents` when the target is unspecified (fall back to "ResearchAgent" only if no clear match is found).
 - Set `pattern` to `once` unless the user explicitly confirms recurring intent.
+- For each task, also provide a concise `title` summarizing the task. Keep it short: no more than 10 words (if space-delimited) or 10 characters (for CJK/no-space text).
 - For recurring tasks with schedules: extract the core task requirement and transform it into a single-execution form:
   * Remove time-related phrases (these go into `schedule_config`)
   * Remove notification/monitoring verbs: "alert", "notify", "remind", "inform", "send notification", "let me know", "tell me when"
@@ -84,6 +85,7 @@ PLANNER_EXPECTED_OUTPUT = """
 {
   "tasks": [
     {
+      "title": "Short task title (<= 10 words or characters)",
       "query": "User's original query, unchanged",
       "agent_name": "target_agent_name (or best-fit agent selected via tool_get_enabled_agents when not provided)",
       "pattern": "once" | "recurring",
@@ -114,6 +116,7 @@ Output:
 {
   "tasks": [
     {
+      "title": "Tesla Q3 revenue",
       "query": "What was Tesla's Q3 2024 revenue?",
       "agent_name": "ResearchAgent",
       "pattern": "once"
@@ -135,6 +138,7 @@ Output:
 {
   "tasks": [
     {
+      "title": "Market trends",
       "query": "Analyze the latest market trends",
       "agent_name": "ResearchAgent",
       "pattern": "once"
@@ -157,6 +161,7 @@ Output:
 {
   "tasks": [
     {
+      "title": "Go on",
       "query": "Go on",
       "agent_name": "ResearchAgent",
       "pattern": "once"
@@ -195,6 +200,7 @@ Output:
 {
   "tasks": [
     {
+      "title": "Apple earnings monitor",
       "query": "Monitor Apple's quarterly earnings and notify me each time they release results",
       "agent_name": "ResearchAgent",
       "pattern": "recurring"
@@ -234,6 +240,7 @@ Output:
 {
   "tasks": [
     {
+      "title": "Tesla price check",
       "query": "Check Tesla stock price for significant changes",
       "agent_name": "ResearchAgent",
       "pattern": "recurring",
@@ -276,6 +283,7 @@ Output:
 {
   "tasks": [
     {
+      "title": "Market trends",
       "query": "Analyze market trends",
       "agent_name": "ResearchAgent",
       "pattern": "recurring",

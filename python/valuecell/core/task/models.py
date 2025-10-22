@@ -29,10 +29,12 @@ class ScheduleConfig(BaseModel):
     """Schedule configuration for recurring tasks"""
 
     interval_minutes: Optional[int] = Field(
-        None, description="Interval in minutes for recurring execution (e.g., 60 for every hour)"
+        None,
+        description="Interval in minutes for recurring execution (e.g., 60 for every hour)",
     )
     daily_time: Optional[str] = Field(
-        None, description="Daily execution time in HH:MM format (e.g., '09:00' for 9 AM)"
+        None,
+        description="Daily execution time in HH:MM format (e.g., '09:00' for 9 AM)",
     )
 
 
@@ -45,6 +47,10 @@ class Task(BaseModel):
     remote_task_ids: List[str] = Field(
         default_factory=list,
         description="Task identifier determined by the remote agent after submission",
+    )
+    title: str = Field(
+        ...,
+        description="A concise task title or summary (<=10 words or characters)",
     )
     query: str = Field(..., description="The task to be performed")
     conversation_id: str = Field(
