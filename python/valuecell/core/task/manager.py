@@ -26,14 +26,6 @@ class TaskManager:
     def _get_task(self, task_id: str) -> Task | None:
         return self._tasks.get(task_id)
 
-    def get_active_tasks(self, conversation_id: str) -> list[Task]:
-        """Get all active (non-finished) tasks for a conversation"""
-        return [
-            task
-            for task in self._tasks.values()
-            if task.conversation_id == conversation_id and not task.is_finished()
-        ]
-
     # Task status management
     async def start_task(self, task_id: str) -> bool:
         """Start task execution"""
