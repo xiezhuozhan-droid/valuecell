@@ -164,7 +164,9 @@ class ScheduledTaskComponentContent(BaseModel):
     task_id: Optional[str] = Field(None, description="The scheduled task ID")
     task_title: Optional[str] = Field(None, description="The scheduled task title")
     result: Optional[str] = Field(None, description="The scheduled task result")
-    create_time: Optional[str] = Field(None, description="The scheduled task created time")
+    create_time: Optional[str] = Field(
+        None, description="The scheduled task created time"
+    )
 
 
 class SubagentConversationPhase(str, Enum):
