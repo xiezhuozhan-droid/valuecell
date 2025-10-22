@@ -1,11 +1,13 @@
 import asyncio
 import json
 import logging
-from typing import AsyncGenerator, Dict, Optional
+from datetime import datetime, timezone
+from typing import AsyncGenerator, Dict, Iterable, List, Optional
 
 from a2a.types import TaskArtifactUpdateEvent, TaskState, TaskStatusUpdateEvent
 
 from valuecell.core.agent.connect import RemoteConnections
+from valuecell.core.agent.responses import EventPredicates
 from valuecell.core.constants import (
     CURRENT_CONTEXT,
     DEPENDENCIES,
@@ -92,6 +94,67 @@ class ExecutionContext:
     def get_metadata(self, key: str, default=None):
         """Get metadata value"""
         return self.metadata.get(key, default)
+
+
+class ScheduledTaskResultAccumulator:
+    """Collect streaming output for a scheduled task run."""
+
+    def __init__(self, task: Task):
+        self._task = task
+        self._buffer: List[str] = []
+
+    @property
+    def enabled(self) -> bool:
+        return self._task.schedule_config is not None
+
+    def consume(self, responses: Iterable[BaseResponse]) -> List[BaseResponse]:
+        if not self.enabled:
+            return list(responses)
+
+        passthrough: List[BaseResponse] = []
+        for resp in responses:
+            event = resp.event
+
+            if EventPredicates.is_message(event):
+                payload = resp.data.payload
+                content = payload.content if payload else None
+                if content:
+                    self._buffer.append(content)
+                continue
+
+            if EventPredicates.is_reasoning(event):
+                continue
+
+            if EventPredicates.is_tool_call(event):
+                continue
+
+            # passthrough.append(resp)
+
+        return passthrough
+
+    def finalize(self, response_factory: ResponseFactory) -> Optional[BaseResponse]:
+        if not self.enabled:
+            return None
+
+        content = "".join(self._buffer).strip()
+        if not content:
+            content = "Task completed without output."
+
+        component_payload = ScheduledTaskComponentContent(
+            task_id=self._task.task_id,
+            task_title=self._task.title,
+            result=content,
+            create_time=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        ).model_dump_json(exclude_none=True)
+
+        return response_factory.component_generator(
+            conversation_id=self._task.conversation_id,
+            thread_id=self._task.thread_id,
+            task_id=self._task.task_id,
+            content=component_payload,
+            component_type=ComponentType.SCHEDULED_TASK_RESULT.value,
+            agent_name=self._task.agent_name,
+        )
 
 
 class UserInputManager:
@@ -644,6 +707,7 @@ class AgentOrchestrator:
         conversation_id = task.conversation_id
         thread_id = task.thread_id
         task_id = task.task_id
+        aggregator = ScheduledTaskResultAccumulator(task)
 
         # Get agent connection
         agent_name = task.agent_name
@@ -679,7 +743,7 @@ class AgentOrchestrator:
                 result: RouteResult = await handle_status_update(
                     self._response_factory, task, thread_id, event
                 )
-                for r in result.responses:
+                for r in aggregator.consume(result.responses):
                     r = self._response_buffer.annotate(r)
                     yield r
                 # Apply side effects
@@ -695,6 +759,10 @@ class AgentOrchestrator:
                     f"Received unexpected artifact update for task {task_id}: {event}"
                 )
                 continue
+
+        final_component = aggregator.finalize(self._response_factory)
+        if final_component is not None:
+            yield final_component
 
     async def _execute_plan_with_input_support(
         self,
