@@ -160,8 +160,8 @@ class AgentOrchestrator:
         # Initialize execution context management
         self._execution_contexts: Dict[str, ExecutionContext] = {}
 
-        # Initialize planner
-        self.planner = ExecutionPlanner(self.agent_connections)
+        # Initialize planner with task_manager for task cancellation support
+        self.planner = ExecutionPlanner(self.agent_connections, self.task_manager)
 
         # Initialize Super Agent (triage/frontline agent)
         self.super_agent = SuperAgent()
@@ -670,7 +670,7 @@ class AgentOrchestrator:
                     conversation_id=conversation_id,
                     thread_id=thread_id,
                     task_id=task_id,
-                    agent_name=agent_name
+                    agent_name=agent_name,
                 )
                 continue
 
@@ -837,6 +837,11 @@ class AgentOrchestrator:
 
             # Execute task with optional scheduling loop
             while True:
+                # Check if task was cancelled
+                if task.is_finished():
+                    logger.info(f"Task {task_id} was cancelled, stopping execution")
+                    break
+
                 # Execute a single run of the task
                 async for response in self._execute_single_task_run(task, metadata):
                     yield response
@@ -860,8 +865,16 @@ class AgentOrchestrator:
                 #     task_id=task_id,
                 #     content=f"Next execution scheduled at {next_run_time.strftime('%Y-%m-%d %H:%M:%S')}",
                 # )
-                # Wait for the next scheduled execution
-                await asyncio.sleep(delay)
+                # Wait for the next scheduled execution (check cancellation periodically)
+                for _ in range(int(delay / ASYNC_SLEEP_INTERVAL)):
+                    if task.is_finished():
+                        logger.info(f"Task {task_id} was cancelled during sleep")
+                        break
+                    await asyncio.sleep(ASYNC_SLEEP_INTERVAL)
+
+                # Final check after sleep
+                if task.is_finished():
+                    break
 
             # Complete task successfully
             await self.task_manager.complete_task(task_id)

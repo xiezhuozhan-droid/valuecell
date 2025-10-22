@@ -25,6 +25,7 @@ from valuecell.core.coordinate.planner_prompts import (
     PLANNER_INSTRUCTION,
 )
 from valuecell.core.task import Task, TaskPattern, TaskStatus
+from valuecell.core.task.manager import TaskManager
 from valuecell.core.task.models import ScheduleConfig
 from valuecell.core.types import UserInput
 from valuecell.utils import generate_uuid
@@ -87,14 +88,18 @@ class ExecutionPlanner:
     def __init__(
         self,
         agent_connections: RemoteConnections,
+        task_manager: TaskManager,
     ):
         self.agent_connections = agent_connections
+        self.task_manager = task_manager
         self.planner_agent = Agent(
             model=get_model("PLANNER_MODEL_ID"),
             tools=[
                 # TODO: enable UserControlFlowTools when stable
                 # UserControlFlowTools(),
                 self.tool_get_enabled_agents,
+                self.tool_get_active_tasks,
+                self.tool_cancel_task,
             ],
             debug_mode=agent_debug_mode_enabled(),
             instructions=[PLANNER_INSTRUCTION],
@@ -312,6 +317,76 @@ class ExecutionPlanner:
             parts.append(agentcard_to_prompt(card))
             parts.append((f"</{agent_name}>\n"))
         return "\n".join(parts)
+
+    def tool_get_active_tasks(self, conversation_id: str) -> str:
+        """
+        Get all active (non-finished) tasks for a conversation.
+
+        This function returns a list of active tasks that can be cancelled by the user.
+        Use this when the user wants to view or cancel existing tasks.
+
+        Args:
+            conversation_id: The conversation ID to get tasks for
+
+        Returns:
+            str: A formatted list of active tasks with their details
+        """
+        if not self.task_manager:
+            return "Task manager not available."
+
+        tasks = self.task_manager.get_active_tasks(conversation_id)
+        if not tasks:
+            return "No active tasks found for this conversation."
+
+        parts = ["Active tasks:"]
+        for i, task in enumerate(tasks, 1):
+            schedule_info = ""
+            if task.schedule_config:
+                if task.schedule_config.interval_minutes:
+                    schedule_info = (
+                        f" (every {task.schedule_config.interval_minutes} min)"
+                    )
+                elif task.schedule_config.daily_time:
+                    schedule_info = f" (daily at {task.schedule_config.daily_time})"
+
+            parts.append(
+                f"{i}. Task ID: {task.task_id}\n"
+                f"   Agent: {task.agent_name}\n"
+                f"   Query: {task.query}\n"
+                f"   Pattern: {task.pattern.value}{schedule_info}\n"
+                f"   Status: {task.status.value}"
+            )
+        return "\n".join(parts)
+
+    async def tool_cancel_task(self, task_id: str) -> str:
+        """
+        Cancel a specific task by its task ID.
+
+        Use this when the user explicitly requests to cancel or stop a task.
+
+        Args:
+            task_id: The ID of the task to cancel
+
+        Returns:
+            str: Confirmation message indicating success or failure
+        """
+        if not self.task_manager:
+            return "Task manager not available."
+
+        task = self.task_manager._get_task(task_id)
+        if not task:
+            return f"Task {task_id} not found."
+
+        if task.is_finished():
+            return f"Task {task_id} is already finished and cannot be cancelled."
+
+        # Mark task for cancellation (the actual cancellation will be handled by orchestrator)
+        # We just mark it here and return success
+        task.cancel_task()
+        task.updated_at = datetime.now()
+        return (
+            f"Successfully cancelled task {task_id} ({task.agent_name}: {task.query})."
+        )
 
 
 def agentcard_to_prompt(card: AgentCard):
