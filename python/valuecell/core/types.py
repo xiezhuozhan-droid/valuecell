@@ -137,6 +137,10 @@ class ComponentGeneratorResponseDataPayload(BaseResponseDataPayload):
     """Payload for responses that generate UI components.
 
     `component_type` describes the kind of component produced.
+
+    Note: To enable component replacement behavior, pass a `component_id`
+    via the StreamResponse metadata. This will override the auto-generated
+    item_id, allowing the frontend to replace components with matching IDs.
     """
 
     component_type: str = Field(..., description="The component type")
@@ -147,8 +151,16 @@ class ComponentType(str, Enum):
 
     REPORT = "report"
     PROFILE = "profile"
+    SUBAGENT_CONVERSATION = "subagent_conversation"
     FILTERED_LINE_CHART = "filtered_line_chart"
     FILTERED_CARD_PUSH_NOTIFICATION = "filtered_card_push_notification"
+
+
+class SubagentConversationPhase(str, Enum):
+    """Phases for subagent conversation component."""
+
+    START = "start"
+    END = "end"
 
 
 class ReportComponentData(BaseModel):
@@ -238,6 +250,9 @@ class ConversationItem(BaseModel):
 
     item_id: str = Field(..., description="Unique message identifier")
     role: Role = Field(..., description="Role of the message sender")
+    agent_name: Optional[str] = Field(
+        None, description="Name of the agent that sent this message"
+    )
     event: ConversationItemEvent = Field(..., description="Event type of the message")
     conversation_id: str = Field(
         ..., description="Conversation ID this message belongs to"
@@ -261,6 +276,9 @@ class UnifiedResponseData(BaseModel):
         None, description="Unique ID for the message thread"
     )
     task_id: Optional[str] = Field(None, description="Unique ID for the task")
+    agent_name: Optional[str] = Field(
+        None, description="Name of the agent associated with this response"
+    )
     payload: Optional[ResponsePayload] = Field(
         None, description="The message data payload"
     )

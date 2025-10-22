@@ -37,11 +37,12 @@ from valuecell.core.coordinate.super_agent import (
 )
 from valuecell.core.coordinate.temporal import calculate_next_execution_delay
 from valuecell.core.task import Task, TaskManager
-from valuecell.core.task.models import TaskPattern
 from valuecell.core.types import (
     BaseResponse,
+    ComponentType,
     ConversationItemEvent,
     StreamResponseEvent,
+    SubagentConversationPhase,
     UserInput,
 )
 from valuecell.utils import resolve_db_path
@@ -280,7 +281,7 @@ class AgentOrchestrator:
 
     async def get_conversation_history(
         self,
-        conversation_id: str,
+        conversation_id: Optional[str] = None,
         event: Optional[ConversationItemEvent] = None,
         component_type: Optional[str] = None,
     ) -> list[BaseResponse]:
@@ -296,7 +297,7 @@ class AgentOrchestrator:
             ConversationItems.
         """
         items = await self.conversation_manager.get_conversation_items(
-            conversation_id, event=event, component_type=component_type
+            conversation_id=conversation_id, event=event, component_type=component_type
         )
         return [self._response_factory.from_conversation_item(it) for it in items]
 
@@ -414,6 +415,7 @@ class AgentOrchestrator:
                     thread_id,
                     task_id=generate_task_id(),
                     content=super_outcome.answer_content,
+                    agent_name=self.super_agent.name,
                 )
                 await self._persist_from_buffer(ans)
                 yield ans
@@ -668,6 +670,7 @@ class AgentOrchestrator:
                     conversation_id=conversation_id,
                     thread_id=thread_id,
                     task_id=task_id,
+                    agent_name=agent_name
                 )
                 continue
 
@@ -729,20 +732,28 @@ class AgentOrchestrator:
 
         for task in plan.tasks:
             subagent_conversation_item_id = generate_item_id()
+            subagent_component_content_dict = {
+                "conversation_id": task.conversation_id,
+                "agent_name": task.agent_name,
+                "phase": SubagentConversationPhase.START.value,
+            }
+            await self.conversation_manager.create_conversation(
+                plan.user_id, conversation_id=task.conversation_id
+            )
             if task.handoff_from_super_agent:
                 yield self._response_factory.component_generator(
                     conversation_id=conversation_id,
                     thread_id=thread_id,
                     task_id=task.task_id,
-                    content=json.dumps(
-                        {
-                            "conversation_id": task.conversation_id,
-                            "agent_name": task.agent_name,
-                            "phase": "start",
-                        }
-                    ),
-                    component_type="subagent_conversation",
-                    item_id=subagent_conversation_item_id,
+                    content=json.dumps(subagent_component_content_dict),
+                    component_type=ComponentType.SUBAGENT_CONVERSATION.value,
+                    component_id=subagent_conversation_item_id,
+                    agent_name=task.agent_name,
+                )
+                yield self._response_factory.thread_started(
+                    conversation_id=task.conversation_id,
+                    thread_id=thread_id,
+                    user_query=task.query,
                 )
             try:
                 # Register the task with TaskManager (persist in-memory)
@@ -768,22 +779,21 @@ class AgentOrchestrator:
                     thread_id,
                     task.task_id,
                     error_msg,
+                    agent_name=task.agent_name,
                 )
             finally:
                 if task.handoff_from_super_agent:
+                    subagent_component_content_dict["phase"] = (
+                        SubagentConversationPhase.END.value
+                    )
                     yield self._response_factory.component_generator(
                         conversation_id=conversation_id,
                         thread_id=thread_id,
                         task_id=task.task_id,
-                        content=json.dumps(
-                            {
-                                "conversation_id": task.conversation_id,
-                                "agent_name": task.agent_name,
-                                "phase": "end",
-                            }
-                        ),
-                        component_type="subagent_conversation",
-                        item_id=subagent_conversation_item_id,
+                        content=json.dumps(subagent_component_content_dict),
+                        component_type=ComponentType.SUBAGENT_CONVERSATION.value,
+                        component_id=subagent_conversation_item_id,
+                        agent_name=task.agent_name,
                     )
 
     async def _execute_task_with_input_support(
@@ -859,6 +869,7 @@ class AgentOrchestrator:
                 conversation_id=conversation_id,
                 thread_id=thread_id,
                 task_id=task_id,
+                agent_name=task.agent_name,
             )
             # Finalize buffered aggregates for this task (explicit flush at task end)
             items = self._response_buffer.flush_task(
@@ -895,4 +906,5 @@ class AgentOrchestrator:
                 task_id=it.task_id,
                 payload=it.payload,
                 item_id=it.item_id,
+                agent_name=it.agent_name,
             )
