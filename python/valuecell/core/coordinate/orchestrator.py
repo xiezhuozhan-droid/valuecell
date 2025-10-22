@@ -941,15 +941,6 @@ class AgentOrchestrator:
 
                 # Schedule next execution
                 logger.info(f"Task {task_id} scheduled to run again in {delay} seconds")
-                # TODO: yield scheduled task waiting message
-                # next_run_time = datetime.now() + timedelta(seconds=delay)
-                # yield self._response_factory.message_response_general(
-                #     event="scheduled_task_waiting",
-                #     conversation_id=conversation_id,
-                #     thread_id=thread_id,
-                #     task_id=task_id,
-                #     content=f"Next execution scheduled at {next_run_time.strftime('%Y-%m-%d %H:%M:%S')}",
-                # )
                 # Wait for the next scheduled execution (check cancellation periodically)
                 for _ in range(int(delay / ASYNC_SLEEP_INTERVAL)):
                     if task.is_finished():
