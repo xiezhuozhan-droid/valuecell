@@ -240,62 +240,47 @@ class AgentOrchestrator:
         self, user_input: UserInput
     ) -> AsyncGenerator[BaseResponse, None]:
         """
-        Main entry point for processing user input with optional
-        Human-in-the-Loop interactions.
+        Stream responses for a user input, decoupled from the caller's lifetime.
 
-        The orchestrator yields streaming `BaseResponse` objects that callers
-        (for example, an HTTP SSE endpoint or WebSocket) can forward to the
-        client. This method handles:
-        - Starting new plans when no execution context exists
-        - Resuming paused executions when conversation state requires input
-        - Directly providing responses to existing pending prompts
-
-        Args:
-            user_input: The user's input, including conversation metadata.
-
-        Yields:
-            BaseResponse instances representing streaming chunks, status,
-            or terminal messages for the request.
+        This function now spawns a background producer task that runs the
+        planning/execution pipeline and emits responses. The async generator
+        here simply consumes from a local queue. If the consumer disconnects,
+        the background task continues, ensuring scheduled tasks and long-running
+        plans proceed independently of the SSE connection.
         """
-        conversation_id = user_input.meta.conversation_id
-        user_id = user_input.meta.user_id
+        # Per-invocation queue and active flag
+        queue: asyncio.Queue[Optional[BaseResponse]] = asyncio.Queue()
+        active = {"value": True}
+
+        async def emit(item: Optional[BaseResponse]):
+            # Drop emissions if the consumer has gone away
+            if not active["value"]:
+                return
+            try:
+                await queue.put(item)
+            except Exception:
+                # Never fail producer due to queue issues; just drop
+                pass
+
+        # Start background producer
+        asyncio.create_task(self._run_session(user_input, emit))
 
         try:
-            # Ensure conversation exists
-            conversation = await self.conversation_manager.get_conversation(
-                conversation_id
-            )
-            if not conversation:
-                await self.conversation_manager.create_conversation(
-                    user_id, conversation_id=conversation_id
-                )
-                conversation = await self.conversation_manager.get_conversation(
-                    conversation_id
-                )
-                yield self._response_factory.conversation_started(
-                    conversation_id=conversation_id
-                )
-
-            # Handle conversation continuation vs new request
-            if conversation.status == ConversationStatus.REQUIRE_USER_INPUT:
-                async for response in self._handle_conversation_continuation(
-                    user_input
-                ):
-                    yield response
-            else:
-                async for response in self._handle_new_request(user_input):
-                    yield response
-
-        except Exception as e:
-            logger.exception(
-                f"Error processing user input for conversation {conversation_id}"
-            )
-            yield self._response_factory.system_failed(
-                conversation_id,
-                f"(Error) Error processing request: {str(e)}",
-            )
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                yield item
+        except asyncio.CancelledError:
+            # Consumer cancelled; mark inactive so producer stops enqueuing
+            active["value"] = False
+            # Do not cancel producer; it should continue independently
+            raise
         finally:
-            yield self._response_factory.done(conversation_id)
+            # Mark inactive to stop further enqueues
+            active["value"] = False
+            # Best-effort: if producer already finished, nothing to do
+            # We deliberately do not cancel the producer to keep execution alive
 
     async def provide_user_input(self, conversation_id: str, response: str):
         """Submit a user's response to a pending input request.
@@ -375,6 +360,80 @@ class AgentOrchestrator:
         await self.agent_connections.stop_all()
 
     # ==================== Private Helper Methods ====================
+
+    async def _run_session(
+        self,
+        user_input: UserInput,
+        emit: callable,
+    ):
+        """Background session runner that produces responses and emits them.
+
+        It wraps the original processing pipeline and forwards each response to
+        the provided emitter. Completion is signaled with a final None.
+        """
+        try:
+            async for response in self._generate_responses(user_input):
+                await emit(response)
+        except Exception as e:
+            # The underlying pipeline already emits system_failed + done, so this
+            # path should be rare; still, don't crash the background task.
+            logger.exception(
+                f"Unhandled error in session runner for conversation {user_input.meta.conversation_id}: {e}"
+            )
+        finally:
+            # Signal completion to the consumer (if any)
+            try:
+                await emit(None)
+            except Exception:
+                pass
+
+    async def _generate_responses(
+        self, user_input: UserInput
+    ) -> AsyncGenerator[BaseResponse, None]:
+        """Generate responses for a user input (original pipeline extracted).
+
+        This contains the previous body of process_user_input unchanged in
+        behavior, yielding the same responses in the same order.
+        """
+        conversation_id = user_input.meta.conversation_id
+        user_id = user_input.meta.user_id
+
+        try:
+            # Ensure conversation exists
+            conversation = await self.conversation_manager.get_conversation(
+                conversation_id
+            )
+            if not conversation:
+                await self.conversation_manager.create_conversation(
+                    user_id, conversation_id=conversation_id
+                )
+                conversation = await self.conversation_manager.get_conversation(
+                    conversation_id
+                )
+                yield self._response_factory.conversation_started(
+                    conversation_id=conversation_id
+                )
+
+            # Handle conversation continuation vs new request
+            if conversation.status == ConversationStatus.REQUIRE_USER_INPUT:
+                async for response in self._handle_conversation_continuation(
+                    user_input
+                ):
+                    yield response
+            else:
+                async for response in self._handle_new_request(user_input):
+                    yield response
+
+        except Exception as e:
+            logger.exception(
+                f"Error processing user input for conversation {conversation_id}"
+            )
+            yield self._response_factory.system_failed(
+                conversation_id,
+                f"(Error) Error processing request: {str(e)}",
+            )
+        finally:
+            yield self._response_factory.done(conversation_id)
 
     async def _handle_user_input_request(self, request: UserInputRequest):
         """Register an incoming `UserInputRequest` produced by the planner.
