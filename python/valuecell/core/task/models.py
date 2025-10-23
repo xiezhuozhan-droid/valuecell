@@ -49,7 +49,7 @@ class Task(BaseModel):
         description="Task identifier determined by the remote agent after submission",
     )
     title: str = Field(
-        ...,
+        default="",
         description="A concise task title or summary (<=10 words or characters)",
     )
     query: str = Field(..., description="The task to be performed")
@@ -93,19 +93,19 @@ class Task(BaseModel):
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat() if v else None}
 
-    def start_task(self) -> None:
+    def start(self) -> None:
         """Start task execution"""
         self.status = TaskStatus.RUNNING
         self.started_at = datetime.now()
         self.updated_at = datetime.now()
 
-    def complete_task(self) -> None:
+    def complete(self) -> None:
         """Complete the task"""
         self.status = TaskStatus.COMPLETED
         self.completed_at = datetime.now()
         self.updated_at = datetime.now()
 
-    def fail_task(self, error_message: str) -> None:
+    def fail(self, error_message: str) -> None:
         """Mark task as failed"""
         self.status = TaskStatus.FAILED
         self.completed_at = datetime.now()
@@ -113,7 +113,7 @@ class Task(BaseModel):
         self.error_message = error_message
 
     # TODO: cancel agent remote task
-    def cancel_task(self) -> None:
+    def cancel(self) -> None:
         """Cancel the task"""
         self.status = TaskStatus.CANCELLED
         self.completed_at = datetime.now()

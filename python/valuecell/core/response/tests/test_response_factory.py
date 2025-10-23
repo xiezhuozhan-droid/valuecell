@@ -1,5 +1,5 @@
 import pytest
-from valuecell.core.coordinate.response import ResponseFactory
+from valuecell.core.response.factory import ResponseFactory
 from valuecell.core.types import (
     BaseResponseDataPayload,
     CommonResponseEvent,

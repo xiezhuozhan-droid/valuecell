@@ -1,5 +1,5 @@
 """
-Unit tests for valuecell.core.coordinate.response_router module
+Unit tests for valuecell.core.response.router module
 """
 
 from unittest.mock import MagicMock, patch
@@ -14,7 +14,7 @@ from a2a.types import (
     Role,
 )
 
-from valuecell.core.coordinate.response_router import (
+from valuecell.core.response.router import (
     RouteResult,
     SideEffect,
     SideEffectKind,

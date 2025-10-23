@@ -7,7 +7,7 @@ from agno.db.in_memory import InMemoryDb
 from agno.tools.crawl4ai import Crawl4aiTools
 from pydantic import BaseModel, Field
 
-from valuecell.core.coordinate.super_agent_prompts import (
+from valuecell.core.super_agent.prompts import (
     SUPER_AGENT_EXPECTED_OUTPUT,
     SUPER_AGENT_INSTRUCTION,
 )

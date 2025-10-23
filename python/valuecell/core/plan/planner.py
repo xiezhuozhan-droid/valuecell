@@ -20,10 +20,6 @@ from agno.agent import Agent
 from agno.db.in_memory import InMemoryDb
 
 from valuecell.core.agent.connect import RemoteConnections
-from valuecell.core.coordinate.planner_prompts import (
-    PLANNER_EXPECTED_OUTPUT,
-    PLANNER_INSTRUCTION,
-)
 from valuecell.core.task import Task, TaskStatus
 from valuecell.core.types import UserInput
 from valuecell.utils import generate_uuid
@@ -32,6 +28,10 @@ from valuecell.utils.model import get_model
 from valuecell.utils.uuid import generate_conversation_id, generate_thread_id
 
 from .models import ExecutionPlan, PlannerInput, PlannerResponse
+from .prompts import (
+    PLANNER_EXPECTED_OUTPUT,
+    PLANNER_INSTRUCTION,
+)
 
 logger = logging.getLogger(__name__)
 

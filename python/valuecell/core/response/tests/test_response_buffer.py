@@ -1,12 +1,12 @@
 """
-Unit tests for valuecell.core.coordinate.response_buffer module
+Unit tests for valuecell.core.response.buffer module
 """
 
 import time
 
 import pytest
 
-from valuecell.core.coordinate.response_buffer import (
+from valuecell.core.response.buffer import (
     BufferEntry,
     ResponseBuffer,
     SaveItem,

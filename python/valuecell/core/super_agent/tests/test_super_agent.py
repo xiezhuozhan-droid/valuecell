@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from valuecell.core.coordinate import super_agent as super_agent_mod
-from valuecell.core.coordinate.super_agent import SuperAgent, SuperAgentDecision
+from valuecell.core.super_agent import SuperAgent, SuperAgentDecision
 from valuecell.core.types import UserInput, UserInputMetadata
 
 
