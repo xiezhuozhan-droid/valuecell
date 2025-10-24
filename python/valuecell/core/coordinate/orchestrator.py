@@ -15,7 +15,6 @@ from valuecell.core.super_agent import (
 from valuecell.core.task import TaskExecutor
 from valuecell.core.types import (
     BaseResponse,
-    ConversationItemEvent,
     StreamResponseEvent,
     UserInput,
 )
@@ -140,29 +139,6 @@ class AgentOrchestrator:
             active["value"] = False
             # Best-effort: if producer already finished, nothing to do
             # We deliberately do not cancel the producer to keep execution alive
-
-    async def get_conversation_history(
-        self,
-        conversation_id: Optional[str] = None,
-        event: Optional[ConversationItemEvent] = None,
-        component_type: Optional[str] = None,
-    ) -> list[BaseResponse]:
-        """Return the persisted conversation history as a list of responses.
-
-        Args:
-            conversation_id: The conversation to retrieve history for.
-            event: Optional filter to include only items with this event type.
-            component_type: Optional filter to include only items with this component type.
-
-        Returns:
-            A list of `BaseResponse` instances reconstructed from persisted
-            ConversationItems.
-        """
-        return await self.response_service.get_conversation_history(
-            conversation_id=conversation_id,
-            event=event,
-            component_type=component_type,
-        )
 
     # ==================== Private Helper Methods ====================
 
