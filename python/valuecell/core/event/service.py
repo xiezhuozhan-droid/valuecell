@@ -8,7 +8,7 @@ from valuecell.core.conversation.service import ConversationService
 from valuecell.core.event.buffer import ResponseBuffer, SaveItem
 from valuecell.core.event.factory import ResponseFactory
 from valuecell.core.event.router import RouteResult, handle_status_update
-from valuecell.core.task import Task
+from valuecell.core.task.models import Task
 from valuecell.core.types import BaseResponse, ConversationItemEvent
 
 

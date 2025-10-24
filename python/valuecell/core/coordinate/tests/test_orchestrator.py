@@ -29,17 +29,17 @@ from valuecell.core.agent.connect import RemoteConnections
 from valuecell.core.conversation import ConversationStatus
 from valuecell.core.conversation.service import ConversationService
 from valuecell.core.coordinate.orchestrator import AgentOrchestrator
+from valuecell.core.event.service import EventResponseService
 from valuecell.core.plan.models import ExecutionPlan
 from valuecell.core.plan.service import PlanService
-from valuecell.core.event.service import EventResponseService
 from valuecell.core.super_agent import (
     SuperAgentDecision,
     SuperAgentOutcome,
     SuperAgentService,
 )
-from valuecell.core.task import Task
 from valuecell.core.task import TaskStatus as CoreTaskStatus
 from valuecell.core.task.executor import TaskExecutor
+from valuecell.core.task.models import Task
 from valuecell.core.task.service import TaskService
 from valuecell.core.types import UserInput, UserInputMetadata
 

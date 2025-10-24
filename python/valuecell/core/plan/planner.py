@@ -20,7 +20,7 @@ from agno.agent import Agent
 from agno.db.in_memory import InMemoryDb
 
 from valuecell.core.agent.connect import RemoteConnections
-from valuecell.core.task import Task, TaskStatus
+from valuecell.core.task.models import Task, TaskStatus
 from valuecell.core.types import UserInput
 from valuecell.utils import generate_uuid
 from valuecell.utils.env import agent_debug_mode_enabled

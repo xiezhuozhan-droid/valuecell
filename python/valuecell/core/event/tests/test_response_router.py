@@ -6,12 +6,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from a2a.types import (
-    TaskState,
-    TaskStatusUpdateEvent,
-    TaskStatus,
     Message,
-    TextPart,
     Role,
+    TaskState,
+    TaskStatus,
+    TaskStatusUpdateEvent,
+    TextPart,
 )
 
 from valuecell.core.event.router import (
@@ -20,7 +20,7 @@ from valuecell.core.event.router import (
     SideEffectKind,
     handle_status_update,
 )
-from valuecell.core.task import Task
+from valuecell.core.task.models import Task
 
 
 class TestSideEffectKind:

@@ -8,7 +8,7 @@ from a2a.utils import get_message_text
 
 from valuecell.core.agent.responses import EventPredicates
 from valuecell.core.event.factory import ResponseFactory
-from valuecell.core.task import Task
+from valuecell.core.task.models import Task
 from valuecell.core.types import (
     BaseResponse,
     CommonResponseEvent,

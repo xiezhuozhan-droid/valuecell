@@ -2,8 +2,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from valuecell.core.task import Task
-from valuecell.core.task.models import ScheduleConfig, TaskPattern
+from valuecell.core.task.models import ScheduleConfig, Task, TaskPattern
 
 
 class ExecutionPlan(BaseModel):
