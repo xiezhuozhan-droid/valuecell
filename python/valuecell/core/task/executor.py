@@ -33,6 +33,7 @@ from valuecell.core.types import (
 )
 from valuecell.utils.i18n_utils import get_current_language, get_current_timezone
 from valuecell.utils.uuid import generate_item_id, generate_task_id
+from valuecell.utils.user_profile_utils import get_user_profile_metadata
 
 
 class ScheduledTaskResultAccumulator:
@@ -214,7 +215,7 @@ class TaskExecutor:
         exec_metadata.setdefault(
             DEPENDENCIES,
             {
-                USER_PROFILE: {},
+                USER_PROFILE: get_user_profile_metadata(task.user_id),
                 CURRENT_CONTEXT: {},
                 LANGUAGE: get_current_language(),
                 TIMEZONE: get_current_timezone(),

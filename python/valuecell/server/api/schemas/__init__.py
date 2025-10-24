@@ -8,6 +8,11 @@ from .base import (
     StatusCode,
     SuccessResponse,
 )
+from .conversation import (
+    ConversationListData,
+    ConversationListItem,
+    ConversationListResponse,
+)
 from .i18n import (
     AgentI18nContextData,
     CurrencyFormatData,
@@ -29,6 +34,13 @@ from .i18n import (
     TranslationRequest,
     UserI18nSettingsData,
     UserI18nSettingsRequest,
+)
+from .user_profile import (
+    CreateUserProfileRequest,
+    UpdateUserProfileRequest,
+    UserProfileData,
+    UserProfileListData,
+    UserProfileSummaryData,
 )
 from .watchlist import (
     AddAssetRequest,
@@ -75,6 +87,10 @@ __all__ = [
     "DateTimeFormatData",
     "NumberFormatData",
     "CurrencyFormatData",
+    # Conversation schemas
+    "ConversationListData",
+    "ConversationListItem",
+    "ConversationListResponse",
     # Watchlist schemas
     "WatchlistItemData",
     "WatchlistData",
@@ -89,4 +105,10 @@ __all__ = [
     "AssetHistoricalPriceData",
     "AssetHistoricalPricesData",
     "WatchlistWithPricesData",
+    # User Profile schemas
+    "UserProfileData",
+    "CreateUserProfileRequest",
+    "UpdateUserProfileRequest",
+    "UserProfileListData",
+    "UserProfileSummaryData",
 ]

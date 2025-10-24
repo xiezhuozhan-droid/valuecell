@@ -6,10 +6,14 @@ from dataclasses import dataclass
 from typing import Optional
 
 from valuecell.core.agent.connect import RemoteConnections
-from valuecell.core.conversation import ConversationManager, SQLiteItemStore
+from valuecell.core.conversation import (
+    ConversationManager,
+    SQLiteConversationStore,
+    SQLiteItemStore,
+)
 from valuecell.core.conversation.service import ConversationService
-from valuecell.core.plan.service import PlanService
 from valuecell.core.event.service import EventResponseService
+from valuecell.core.plan.service import PlanService
 from valuecell.core.super_agent import SuperAgentService
 from valuecell.core.task.executor import TaskExecutor
 from valuecell.core.task.service import TaskService
@@ -35,12 +39,6 @@ class AgentServiceBundle:
     super_agent_service: SuperAgentService
     task_executor: TaskExecutor
 
-    @property
-    def conversation_manager(self) -> ConversationManager:
-        """Expose the shared conversation manager used by all services."""
-
-        return self.conversation_service.manager
-
     @classmethod
     def compose(
         cls,
@@ -61,6 +59,7 @@ class AgentServiceBundle:
             conv_service = response_service.conversation_service
         else:
             base_manager = ConversationManager(
+                conversation_store=SQLiteConversationStore(resolve_db_path()),
                 item_store=SQLiteItemStore(resolve_db_path())
             )
             conv_service = ConversationService(manager=base_manager)
