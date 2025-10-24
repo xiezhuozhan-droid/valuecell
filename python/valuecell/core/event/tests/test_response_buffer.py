@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from valuecell.core.response.buffer import (
+from valuecell.core.event.buffer import (
     BufferEntry,
     ResponseBuffer,
     SaveItem,

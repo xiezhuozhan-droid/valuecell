@@ -31,7 +31,7 @@ from valuecell.core.conversation.service import ConversationService
 from valuecell.core.coordinate.orchestrator import AgentOrchestrator
 from valuecell.core.plan.models import ExecutionPlan
 from valuecell.core.plan.service import PlanService
-from valuecell.core.response.service import ResponseService
+from valuecell.core.event.service import EventResponseService
 from valuecell.core.super_agent import (
     SuperAgentDecision,
     SuperAgentOutcome,
@@ -195,7 +195,7 @@ def _orchestrator(
     agent_connections.start_agent = AsyncMock()
 
     conversation_service = ConversationService(manager=mock_conversation_manager)
-    response_service = ResponseService(conversation_service=conversation_service)
+    response_service = EventResponseService(conversation_service=conversation_service)
     task_service = TaskService(manager=mock_task_manager)
     plan_service = PlanService(
         agent_connections=agent_connections, execution_planner=mock_planner

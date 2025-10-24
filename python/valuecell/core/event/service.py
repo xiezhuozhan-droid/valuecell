@@ -5,14 +5,14 @@ from __future__ import annotations
 from typing import Iterable
 
 from valuecell.core.conversation.service import ConversationService
-from valuecell.core.response.buffer import ResponseBuffer, SaveItem
-from valuecell.core.response.factory import ResponseFactory
-from valuecell.core.response.router import RouteResult, handle_status_update
+from valuecell.core.event.buffer import ResponseBuffer, SaveItem
+from valuecell.core.event.factory import ResponseFactory
+from valuecell.core.event.router import RouteResult, handle_status_update
 from valuecell.core.task import Task
 from valuecell.core.types import BaseResponse, ConversationItemEvent
 
 
-class ResponseService:
+class EventResponseService:
     """Provide a single entry point for response creation and persistence."""
 
     def __init__(
@@ -48,7 +48,7 @@ class ResponseService:
             out.append(await self.emit(resp))
         return out
 
-    async def flush_task(
+    async def flush_task_response(
         self, conversation_id: str, thread_id: str | None, task_id: str | None
     ) -> None:
         """Force-flush buffered paragraphs for a task context."""

@@ -9,7 +9,7 @@ from valuecell.core.agent.connect import RemoteConnections
 from valuecell.core.conversation import ConversationManager, SQLiteItemStore
 from valuecell.core.conversation.service import ConversationService
 from valuecell.core.plan.service import PlanService
-from valuecell.core.response.service import ResponseService
+from valuecell.core.event.service import EventResponseService
 from valuecell.core.super_agent import SuperAgentService
 from valuecell.core.task.executor import TaskExecutor
 from valuecell.core.task.service import TaskService
@@ -29,7 +29,7 @@ class AgentServiceBundle:
 
     agent_connections: RemoteConnections
     conversation_service: ConversationService
-    response_service: ResponseService
+    response_service: EventResponseService
     task_service: TaskService
     plan_service: PlanService
     super_agent_service: SuperAgentService
@@ -46,7 +46,7 @@ class AgentServiceBundle:
         cls,
         *,
         conversation_service: Optional[ConversationService] = None,
-        response_service: Optional[ResponseService] = None,
+        response_service: Optional[EventResponseService] = None,
         plan_service: Optional[PlanService] = None,
         super_agent_service: Optional[SuperAgentService] = None,
         task_executor: Optional[TaskExecutor] = None,
@@ -65,7 +65,7 @@ class AgentServiceBundle:
             )
             conv_service = ConversationService(manager=base_manager)
 
-        resp_service = response_service or ResponseService(
+        resp_service = response_service or EventResponseService(
             conversation_service=conv_service
         )
         t_service = TaskService()

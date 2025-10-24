@@ -6,7 +6,7 @@ from loguru import logger
 from valuecell.core.constants import ORIGINAL_USER_INPUT, PLANNING_TASK
 from valuecell.core.conversation import ConversationService, ConversationStatus
 from valuecell.core.plan import PlanService
-from valuecell.core.response import ResponseService
+from valuecell.core.event import EventResponseService
 from valuecell.core.super_agent import (
     SuperAgentDecision,
     SuperAgentOutcome,
@@ -71,7 +71,7 @@ class AgentOrchestrator:
     def __init__(
         self,
         conversation_service: ConversationService | None = None,
-        response_service: ResponseService | None = None,
+        response_service: EventResponseService | None = None,
         plan_service: PlanService | None = None,
         super_agent_service: SuperAgentService | None = None,
         task_executor: TaskExecutor | None = None,

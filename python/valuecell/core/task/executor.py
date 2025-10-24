@@ -18,9 +18,9 @@ from valuecell.core.constants import (
 )
 from valuecell.core.conversation.service import ConversationService
 from valuecell.core.plan.models import ExecutionPlan
-from valuecell.core.response.factory import ResponseFactory
-from valuecell.core.response.router import RouteResult, SideEffectKind
-from valuecell.core.response.service import ResponseService
+from valuecell.core.event.factory import ResponseFactory
+from valuecell.core.event.router import RouteResult, SideEffectKind
+from valuecell.core.event.service import EventResponseService
 from valuecell.core.task.models import Task
 from valuecell.core.task.service import DEFAULT_EXECUTION_POLL_INTERVAL, TaskService
 from valuecell.core.task.temporal import calculate_next_execution_delay
@@ -104,7 +104,7 @@ class TaskExecutor:
         self,
         agent_connections: RemoteConnections,
         task_service: TaskService,
-        response_service: ResponseService,
+        response_service: EventResponseService,
         conversation_service: ConversationService,
         poll_interval: float = DEFAULT_EXECUTION_POLL_INTERVAL,
     ) -> None:
@@ -277,7 +277,7 @@ class TaskExecutor:
             await self._task_service.fail_task(task_id, str(exc))
             raise
         finally:
-            await self._response_service.flush_task(
+            await self._response_service.flush_task_response(
                 conversation_id=conversation_id,
                 thread_id=thread_id,
                 task_id=task_id,
