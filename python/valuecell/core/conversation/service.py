@@ -29,6 +29,7 @@ class ConversationService:
         user_id: str,
         conversation_id: str,
         title: Optional[str] = None,
+        agent_name: Optional[str] = None,
     ) -> Tuple[Conversation, bool]:
         """Return the conversation, creating it if it does not exist."""
 
@@ -39,6 +40,7 @@ class ConversationService:
                 user_id=user_id,
                 title=title,
                 conversation_id=conversation_id,
+                agent_name=agent_name,
             )
             created = True
         return conversation, created

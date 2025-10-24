@@ -17,10 +17,10 @@ from valuecell.core.constants import (
     USER_PROFILE,
 )
 from valuecell.core.conversation.service import ConversationService
-from valuecell.core.plan.models import ExecutionPlan
 from valuecell.core.event.factory import ResponseFactory
 from valuecell.core.event.router import RouteResult, SideEffectKind
 from valuecell.core.event.service import EventResponseService
+from valuecell.core.plan.models import ExecutionPlan
 from valuecell.core.task.models import Task
 from valuecell.core.task.service import DEFAULT_EXECUTION_POLL_INTERVAL, TaskService
 from valuecell.core.task.temporal import calculate_next_execution_delay
@@ -32,8 +32,8 @@ from valuecell.core.types import (
     SubagentConversationPhase,
 )
 from valuecell.utils.i18n_utils import get_current_language, get_current_timezone
-from valuecell.utils.uuid import generate_item_id, generate_task_id
 from valuecell.utils.user_profile_utils import get_user_profile_metadata
+from valuecell.utils.uuid import generate_item_id, generate_task_id
 
 
 class ScheduledTaskResultAccumulator:
@@ -138,6 +138,7 @@ class TaskExecutor:
                 await self._conversation_service.ensure_conversation(
                     user_id=plan.user_id,
                     conversation_id=task.conversation_id,
+                    agent_name=task.agent_name,
                 )
                 component_payload = json.dumps(
                     {

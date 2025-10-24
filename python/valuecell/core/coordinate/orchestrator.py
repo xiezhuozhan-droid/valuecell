@@ -5,8 +5,8 @@ from loguru import logger
 
 from valuecell.core.constants import ORIGINAL_USER_INPUT, PLANNING_TASK
 from valuecell.core.conversation import ConversationService, ConversationStatus
-from valuecell.core.plan import PlanService
 from valuecell.core.event import EventResponseService
+from valuecell.core.plan import PlanService
 from valuecell.core.super_agent import (
     SuperAgentDecision,
     SuperAgentOutcome,
@@ -177,11 +177,12 @@ class AgentOrchestrator:
         behavior, yielding the same responses in the same order.
         """
         conversation_id = user_input.meta.conversation_id
-        user_id = user_input.meta.user_id
 
         try:
             conversation, created = await self.conversation_service.ensure_conversation(
-                user_id=user_id, conversation_id=conversation_id
+                user_id=user_input.meta.user_id,
+                conversation_id=conversation_id,
+                agent_name=user_input.target_agent_name,
             )
 
             if created:

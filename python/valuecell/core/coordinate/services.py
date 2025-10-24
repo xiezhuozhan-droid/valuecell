@@ -60,7 +60,7 @@ class AgentServiceBundle:
         else:
             base_manager = ConversationManager(
                 conversation_store=SQLiteConversationStore(resolve_db_path()),
-                item_store=SQLiteItemStore(resolve_db_path())
+                item_store=SQLiteItemStore(resolve_db_path()),
             )
             conv_service = ConversationService(manager=base_manager)
 
