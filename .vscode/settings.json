@@ -1,3 +1,16 @@
 {
-    "makefile.configureOnOpen": false
+    "makefile.configureOnOpen": false,
+    "cSpell.words": [
+        "Bkkjvl",
+        "colorama",
+        "deepseek",
+        "EMBEDDER",
+        "Finnhub",
+        "OPENROUTER",
+        "PYTHONIOENCODING",
+        "Ukpu",
+        "valuecell",
+        "XUEQIU",
+        "Yfinance"
+    ]
 }
